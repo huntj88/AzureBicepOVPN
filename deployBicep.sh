@@ -1,0 +1,1 @@
+az deployment group create --resource-group vpn --template-file openvpn.bicep --parameters adminUsername=testUser123! adminPassword=test123! vmScriptBase64=$(cat vmScript.sh | base64 -w0)
