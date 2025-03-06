@@ -10,7 +10,10 @@ param addressPrefix string = '10.0.0.0/16'
 param subnetPrefix string = '10.0.0.0/24'
 param publicIpName string = 'openvpn-ip'
 param nicName string = 'openvpn-nic'
-param vmScriptBase64 string = 'vmScriptBase64'
+param uploadCredentialsScriptBase64 string
+param installScriptBase64 string
+param storageAccountName string = 'vpnstorage006314d62eef4d'
+param containerName string = 'vpn'
 
 resource vnet 'Microsoft.Network/virtualNetworks@2021-02-01' = {
   name: vnetName
@@ -93,6 +96,7 @@ resource vm 'Microsoft.Compute/virtualMachines@2021-03-01' = {
 
 resource customScript 'Microsoft.Compute/virtualMachines/extensions@2021-03-01' = {
   parent: vm
+  dependsOn: [blobContainer]
   name: 'installOpenVPN'
   location: location
   properties: {
@@ -100,8 +104,34 @@ resource customScript 'Microsoft.Compute/virtualMachines/extensions@2021-03-01' 
     type: 'CustomScript'
     typeHandlerVersion: '2.1'
     autoUpgradeMinorVersion: true
-    settings: {
-        script: vmScriptBase64
+    protectedSettings: {
+      commandToExecute: 'echo ${uploadCredentialsScriptBase64} | base64 -d > uploadCredentials.sh && echo ${installScriptBase64} | base64 -d > install.sh && bash install.sh && bash uploadCredentials.sh ${storageAccount.listKeys().keys[0].value} && systemctl start openvpn@server'
     }
+  }
+}
+
+resource storageAccount 'Microsoft.Storage/storageAccounts@2021-02-01' = {
+  name: storageAccountName
+  location: location
+  sku: {
+    name: 'Standard_LRS'
+  }
+  kind: 'StorageV2'
+  properties: {
+    accessTier: 'Hot'
+  }
+}
+
+resource blobService 'Microsoft.Storage/storageAccounts/blobServices@2021-02-01' = {
+  parent: storageAccount
+  name: 'default'
+  properties: {}
+}
+
+resource blobContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2021-02-01' = {
+  parent: blobService
+  name: containerName
+  properties: {
+    publicAccess: 'None'
   }
 }
