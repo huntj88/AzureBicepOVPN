@@ -1,6 +1,18 @@
 #!/bin/bash
 
-# generate all config if last part of if statement is has not previously finished
+storageAccountKey=$1
+if [ -z "$storageAccountKey" ]; then
+  echo "Usage: $0 <storageAccountKey>"
+  exit 1
+fi
+
+# attempt to download config/credentials from Azure blob storage
+if [ ! -f /etc/openvpn/ta.key ]; then
+    echo "attempting download of credentials from Azure blob storage"
+    bash downloadCredentials.sh $storageAccountKey || echo "download failed"
+fi
+
+# generate all config/credentials if not on disk
 if [ ! -f /etc/openvpn/ta.key ]; then
   echo " make-cadir " &&
   make-cadir ~/openvpn-ca || echo \\"make-cadir failed\\" &&
@@ -17,7 +29,8 @@ if [ ! -f /etc/openvpn/ta.key ]; then
   cp pki/ca.crt pki/private/ca.key pki/issued/server.crt pki/private/server.key pki/dh.pem /etc/openvpn &&
   mv /etc/openvpn/dh.pem /etc/openvpn/dh2048.pem &&
 
-  openvpn --genkey tls-auth /etc/openvpn/ta.key
+  openvpn --genkey tls-auth /etc/openvpn/ta.key &&
+  bash uploadCredentials.sh $storageAccountKey
 fi
 
 # updating config settings, can be run every time
@@ -33,4 +46,4 @@ echo -e "\npush \"dhcp-option DNS 8.8.8.8\"" >> /etc/openvpn/server.conf &&
 # forwarding traffic to 10.8.0.0 address space
 echo -e "\nnet.ipv4.ip_forward=1" >> /etc/sysctl.conf &&
 sysctl -p /etc/sysctl.conf &&
-iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -o eth0 -j MASQUERADE
+iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -o eth0 -j MASQUERADE # does this ever get disabled? does it need to be added to a config file?

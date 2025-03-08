@@ -4,9 +4,11 @@ param adminUsername string
 @secure()
 param adminPassword string
 param vmUp bool
-param installDependenciesScriptBase64 string
-param setupOpenVPNScriptBase64 string
-param uploadCredentialsScriptBase64 string
+param installDependenciesB64 string
+param downloadCredentialsB64 string
+param setupOpenVPNB64 string
+param uploadCredentialsB64 string
+param vmInitB64 string
 
 param vmSize string = 'Standard_B1ms'
 param vnetName string = 'openvpn-vnet'
@@ -157,7 +159,7 @@ resource customScript 'Microsoft.Compute/virtualMachines/extensions@2021-03-01' 
     typeHandlerVersion: '2.1'
     autoUpgradeMinorVersion: true
     protectedSettings: {
-      commandToExecute: 'echo ${installDependenciesScriptBase64} | base64 -d > installDependencies.sh && echo ${setupOpenVPNScriptBase64} | base64 -d > setupOpenVPN.sh && echo ${uploadCredentialsScriptBase64} | base64 -d > uploadCredentials.sh && bash installDependencies.sh && bash setupOpenVPN.sh && bash uploadCredentials.sh ${storageAccount.listKeys().keys[0].value} && systemctl start openvpn@server'
+      commandToExecute: 'echo ${installDependenciesB64} | base64 -d > installDependencies.sh && echo ${downloadCredentialsB64} | base64 -d > downloadCredentials.sh && echo ${setupOpenVPNB64} | base64 -d > setupOpenVPN.sh && echo ${uploadCredentialsB64} | base64 -d > uploadCredentials.sh && echo ${vmInitB64} | base64 -d > vmInit.sh && bash vmInit.sh ${storageAccount.listKeys().keys[0].value}'
     }
   }
 }

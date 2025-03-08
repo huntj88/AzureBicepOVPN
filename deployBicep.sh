@@ -17,7 +17,8 @@ az deployment group create \
    vmUp=$vmUp \
    adminUsername=testUser123! \
    adminPassword=test123! \
-   installDependenciesScriptBase64=$(cat installDependencies.sh | base64 -w0) \
-   setupOpenVPNScriptBase64=$(cat setupOpenVPN.sh | base64 -w0) \
-   uploadCredentialsScriptBase64=$(cat uploadCredentials.sh | base64 -w0)
-   
+   installDependenciesB64=$(cat installDependencies.sh | base64 -w0) \
+   downloadCredentialsB64=$(cat downloadCredentials.sh | base64 -w0) \
+   setupOpenVPNB64=$(cat setupOpenVPN.sh | base64 -w0) \
+   uploadCredentialsB64=$(cat uploadCredentials.sh | base64 -w0) \
+   vmInitB64=$(cat vmInit.sh | base64 -w0)
