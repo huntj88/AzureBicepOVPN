@@ -3,17 +3,47 @@ param vmName string = 'openvpn-vm'
 param adminUsername string
 @secure()
 param adminPassword string
+param vmUp bool
+param installDependenciesScriptBase64 string
+param setupOpenVPNScriptBase64 string
+param uploadCredentialsScriptBase64 string
+
 param vmSize string = 'Standard_B1ms'
 param vnetName string = 'openvpn-vnet'
 param subnetName string = 'default'
-param addressPrefix string = '10.0.0.0/16'
-param subnetPrefix string = '10.0.0.0/24'
+param bastionSubnetName string = 'AzureBastionSubnet'
+param addressPrefix string = '10.0.0.0/24'
+param subnetPrefix string = '10.0.0.0/28'
+param bastionSubnetPrefix string = '10.0.0.64/26'
 param publicIpName string = 'openvpn-ip'
+param bastionPublicIpName string = 'bastion-ip'
 param nicName string = 'openvpn-nic'
-param uploadCredentialsScriptBase64 string
-param installScriptBase64 string
 param storageAccountName string = 'vpnstorage006314d62eef4d'
 param containerName string = 'vpn'
+param nsgName string = 'openvpn-nsg'
+param bastionHostName string = 'openvpn-bastion'
+
+resource nsg 'Microsoft.Network/networkSecurityGroups@2021-02-01' = {
+  name: nsgName
+  location: location
+  properties: {
+    securityRules: [
+      {
+        name: 'Allow-OpenVPN'
+        properties: {
+          priority: 1000
+          direction: 'Inbound'
+          access: 'Allow'
+          protocol: 'UDP'
+          sourcePortRange: '*'
+          destinationPortRange: '1194'
+          sourceAddressPrefix: '*'
+          destinationAddressPrefix: '*'
+        }
+      }
+    ]
+  }
+}
 
 resource vnet 'Microsoft.Network/virtualNetworks@2021-02-01' = {
   name: vnetName
@@ -27,6 +57,15 @@ resource vnet 'Microsoft.Network/virtualNetworks@2021-02-01' = {
         name: subnetName
         properties: {
           addressPrefix: subnetPrefix
+          networkSecurityGroup: {
+            id: nsg.id
+          }
+        }
+      }
+      {
+        name: bastionSubnetName
+        properties: {
+          addressPrefix: bastionSubnetPrefix
         }
       }
     ]
@@ -41,16 +80,29 @@ resource publicIp 'Microsoft.Network/publicIPAddresses@2021-02-01' = {
   }
 }
 
-resource nic 'Microsoft.Network/networkInterfaces@2021-02-01' = {
+resource bastionPublicIp 'Microsoft.Network/publicIPAddresses@2021-02-01' = {
+  name: bastionPublicIpName
+  location: location
+  sku: {
+    name: 'Standard'
+  }
+  properties: {
+    publicIPAllocationMethod: 'Static'
+  }
+}
+
+resource nic 'Microsoft.Network/networkInterfaces@2024-05-01' = {
   name: nicName
   location: location
   properties: {
+    
     ipConfigurations: [
       {
         name: 'ipconfig1'
         properties: {
+          primary: true
           subnet: {
-            id: vnet.properties.subnets[0].id
+            id: '${vnet.id}/subnets/${subnetName}'
           }
           publicIPAddress: {
             id: publicIp.id
@@ -61,7 +113,7 @@ resource nic 'Microsoft.Network/networkInterfaces@2021-02-01' = {
   }
 }
 
-resource vm 'Microsoft.Compute/virtualMachines@2021-03-01' = {
+resource vm 'Microsoft.Compute/virtualMachines@2021-03-01' = if (vmUp) {
   name: vmName
   location: location
   properties: {
@@ -105,7 +157,7 @@ resource customScript 'Microsoft.Compute/virtualMachines/extensions@2021-03-01' 
     typeHandlerVersion: '2.1'
     autoUpgradeMinorVersion: true
     protectedSettings: {
-      commandToExecute: 'echo ${uploadCredentialsScriptBase64} | base64 -d > uploadCredentials.sh && echo ${installScriptBase64} | base64 -d > install.sh && bash install.sh && bash uploadCredentials.sh ${storageAccount.listKeys().keys[0].value} && systemctl start openvpn@server'
+      commandToExecute: 'echo ${installDependenciesScriptBase64} | base64 -d > installDependencies.sh && echo ${setupOpenVPNScriptBase64} | base64 -d > setupOpenVPN.sh && echo ${uploadCredentialsScriptBase64} | base64 -d > uploadCredentials.sh && bash installDependencies.sh && bash setupOpenVPN.sh && bash uploadCredentials.sh ${storageAccount.listKeys().keys[0].value} && systemctl start openvpn@server'
     }
   }
 }
@@ -133,5 +185,26 @@ resource blobContainer 'Microsoft.Storage/storageAccounts/blobServices/container
   name: containerName
   properties: {
     publicAccess: 'None'
+  }
+}
+
+// TODO: this should not be left on all the time
+resource bastionHost 'Microsoft.Network/bastionHosts@2024-05-01' = {
+  name: bastionHostName
+  location: location
+  properties: {
+    ipConfigurations: [
+      {
+        name: 'bastionHostIpConfig'
+        properties: {
+          subnet: {
+            id: '${vnet.id}/subnets/${bastionSubnetName}'
+          }
+          publicIPAddress: {
+            id: bastionPublicIp.id
+          }
+        }
+      }
+    ]
   }
 }
