@@ -27,5 +27,10 @@ echo -e '\npush "redirect-gateway def1"' >> /etc/openvpn/server.conf &&
 # TODO: replace with dns server behind vpn
 # echo -e "\npush \"dhcp-option DNS TODO.ip.goes.here\"" >> /etc/openvpn/server.conf
 echo -e "\npush \"dhcp-option DNS 8.8.8.8\"" >> /etc/openvpn/server.conf &&
+
+
+# https://askubuntu.com/questions/1022770/route-all-traffic-redirect-gateway-not-working-openvpn
+# forwarding traffic to 10.8.0.0 address space
 echo -e "\nnet.ipv4.ip_forward=1" >> /etc/sysctl.conf &&
-sysctl -p /etc/sysctl.conf
+sysctl -p /etc/sysctl.conf &&
+iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -o eth0 -j MASQUERADE
