@@ -41,6 +41,13 @@ echo -e '\npush "redirect-gateway def1"' >> /etc/openvpn/server.conf &&
 # echo -e "\npush \"dhcp-option DNS TODO.ip.goes.here\"" >> /etc/openvpn/server.conf
 echo -e "\npush \"dhcp-option DNS 8.8.8.8\"" >> /etc/openvpn/server.conf &&
 
+# https://www.sindastra.de/p/807/quickly-kill-ipv6-leaks-on-your-openvpn-server#:~:text=We%20can%20quickly%20solve%20this%20by%20giving%20our,usually%20found%20at%20%2Fetc%2Fopenvpn%2Fserver.conf%20or%20%2Fetc%2Fopenvpn%2Fserver%2Fserver.conf%20or%20similar.
+# Assign the network address of 2001:db8:0:123::/64 to your OpenVPN server
+echo -e "\nserver-ipv6 2001:db8:0:123::/64" >> /etc/openvpn/server.conf &&
+# and then push a route so that all IPv6-internet addresses on the client side will be connected to through the VPN server.
+echo -e "\npush \"route-ipv6 2000::/3\"" >> /etc/openvpn/server.conf &&
+# disable ipv6, prevent ipv6 client leak
+echo -e "\nnet.ipv6.conf.all.forwarding=0" >> /etc/sysctl.conf &&
 
 # https://askubuntu.com/questions/1022770/route-all-traffic-redirect-gateway-not-working-openvpn
 # forwarding traffic to 10.8.0.0 address space
