@@ -74,15 +74,19 @@ resource vnet 'Microsoft.Network/virtualNetworks@2021-02-01' = {
   }
 }
 
-resource publicIp 'Microsoft.Network/publicIPAddresses@2021-02-01' = {
+resource publicIp 'Microsoft.Network/publicIPAddresses@2024-05-01' = {
   name: publicIpName
   location: location
+  sku: {
+    name: 'Standard'
+  }
   properties: {
-    publicIPAllocationMethod: 'Dynamic'
+    deleteOption: 'Detach'
+    publicIPAllocationMethod: 'Static'
   }
 }
 
-resource bastionPublicIp 'Microsoft.Network/publicIPAddresses@2021-02-01' = {
+resource bastionPublicIp 'Microsoft.Network/publicIPAddresses@2024-05-01' = {
   name: bastionPublicIpName
   location: location
   sku: {
@@ -93,11 +97,10 @@ resource bastionPublicIp 'Microsoft.Network/publicIPAddresses@2021-02-01' = {
   }
 }
 
-resource nic 'Microsoft.Network/networkInterfaces@2024-05-01' = {
+resource nic 'Microsoft.Network/networkInterfaces@2024-05-01' = if (vmUp) {
   name: nicName
   location: location
   properties: {
-    
     ipConfigurations: [
       {
         name: 'ipconfig1'
