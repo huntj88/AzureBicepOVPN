@@ -8,7 +8,12 @@ fi
 
 download() {
     local name=$1
-    az storage blob download -c vpn --account-key $storageAccountKey --account-name vpnstorage006314d62eef4d -f /etc/openvpn/$name -n $name
+    az storage blob download \
+        --container-name vpn \
+        --account-key $storageAccountKey \
+        --account-name vpnstorage006314d62eef4d \
+        --file /etc/openvpn/$name \
+        --name $name # blob file name
 }
 
 download dh2048.pem &&

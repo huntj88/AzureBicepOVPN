@@ -6,6 +6,12 @@ if [ -z "$storageAccountKey" ]; then
   exit 1
 fi
 
+publicIp=$2
+if [ -z "$publicIp" ]; then
+  echo "Usage: $0 <publicIp>"
+  exit 1
+fi
+
 # attempt to download config/credentials from Azure blob storage
 if [ ! -f /etc/openvpn/ta.key ]; then
     echo "attempting download of credentials from Azure blob storage"
@@ -38,8 +44,8 @@ cp /usr/share/doc/openvpn/examples/sample-config-files/server.conf /etc/openvpn/
 echo -e '\npush "redirect-gateway def1"' >> /etc/openvpn/server.conf &&
 
 # TODO: replace with dns server behind vpn
-# echo -e "\npush \"dhcp-option DNS TODO.ip.goes.here\"" >> /etc/openvpn/server.conf
 echo -e "\npush \"dhcp-option DNS 8.8.8.8\"" >> /etc/openvpn/server.conf &&
+echo -e "\npush \"remote-gateway $publicIp\"" >> /etc/openvpn/server.conf &&
 
 # https://www.sindastra.de/p/807/quickly-kill-ipv6-leaks-on-your-openvpn-server#:~:text=We%20can%20quickly%20solve%20this%20by%20giving%20our,usually%20found%20at%20%2Fetc%2Fopenvpn%2Fserver.conf%20or%20%2Fetc%2Fopenvpn%2Fserver%2Fserver.conf%20or%20similar.
 # Assign the network address of 2001:db8:0:123::/64 to your OpenVPN server
@@ -53,4 +59,6 @@ echo -e "\nnet.ipv6.conf.all.forwarding=0" >> /etc/sysctl.conf &&
 # forwarding traffic to 10.8.0.0 address space
 echo -e "\nnet.ipv4.ip_forward=1" >> /etc/sysctl.conf &&
 sysctl -p /etc/sysctl.conf &&
-iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -o eth0 -j MASQUERADE # does this ever get disabled? does it need to be added to a config file?
+iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -o eth0 -j MASQUERADE
+
+systemctl reload-or-restart openvpn@server

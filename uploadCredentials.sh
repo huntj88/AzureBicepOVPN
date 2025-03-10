@@ -11,7 +11,13 @@ sleep 5
 
 upload() {
     local name=$1
-    az storage blob upload --overwrite -c vpn --account-key $storageAccountKey --account-name vpnstorage006314d62eef4d -f $name -n $(basename $name) || echo "Failed to upload $name"
+    az storage blob upload \
+      --overwrite \
+      --container-name vpn \
+      --account-key $storageAccountKey \
+      --account-name vpnstorage006314d62eef4d \
+      --file $name \
+      --name $(basename $name) # blob file name
 }
 
 upload /etc/openvpn/dh2048.pem
